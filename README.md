@@ -1,3 +1,3 @@
 # mobiscroll
-mobiscroll2.52_移动端_中文
+mobiscroll2.52_移动端_中文_Crack
 
