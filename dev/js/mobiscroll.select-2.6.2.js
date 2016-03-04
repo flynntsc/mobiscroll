@@ -12,8 +12,8 @@
     $.mobiscroll.presetShort('select');
 
     $.mobiscroll.presets.select = function (inst) {
-        var stg = inst.settings,
-            s = $.extend({}, defaults, stg),
+        var orig = $.extend({}, inst.settings),
+            s = $.extend(inst.settings, defaults, orig),
             elm = $(this),
             multiple = elm.prop('multiple'),
             id = this.id + '_dummy',
@@ -32,53 +32,63 @@
             optIdx,
             timer,
             input,
-            roPre = stg.readonly,
+            roPre = s.readonly,
             w;
-        
-        function replace(str) {
-            return str ? str.replace(/_/, '') : '';
-        }
 
         function genWheels() {
             var cont,
                 wg = 0,
-                wheel = {},
-                w = [{}];
+                values = [],
+                keys = [],
+                w = [[]];
 
             if (s.group) {
                 if (s.rtl) {
                     wg = 1;
                 }
 
-                $('optgroup', elm).each(function (index) {
-                    wheel['_' + index] = $(this).attr('label');
+                $('optgroup', elm).each(function (i) {
+                    values.push($(this).attr('label'));
+                    keys.push(i);
                 });
 
-                w[wg] = {};
-                w[wg][s.groupLabel] = wheel;
+                w[wg] = [{
+                    values: values,
+                    keys: keys,
+                    label: s.groupLabel
+                }];
+
                 cont = group;
                 wg += (s.rtl ? -1 : 1);
 
             } else {
                 cont = elm;
             }
-            w[wg] = {};
-            w[wg][label] = {};
+
+            values = [];
+            keys = [];
 
             $('option', cont).each(function () {
                 var v = $(this).attr('value');
-                w[wg][label]['_' + v] = $(this).text();
+                values.push($(this).text());
+                keys.push(v);
                 if ($(this).prop('disabled')) {
                     invalid.push(v);
                 }
             });
 
+            w[wg] = [{
+                values: values,
+                keys: keys,
+                label: label
+            }];
+
             return w;
         }
-        
+
         function setVal(v, fill) {
             var value = [];
-            
+
             if (multiple) {
                 var sel = [],
                     i = 0;
@@ -90,12 +100,32 @@
                 input.val(sel.join(', '));
             } else {
                 input.val(v);
-                value = fill ? replace(inst.values[optIdx]) : null;
+                value = fill ? inst.values[optIdx] : null;
             }
-            
+
             if (fill) {
                 prevent = true;
                 elm.val(value).trigger('change');
+            }
+        }
+
+        function onTap(li) {
+            if (multiple && li.hasClass('dw-v') && li.closest('.dw').find('.dw-ul').index(li.closest('.dw-ul')) == optIdx) {
+                var val = li.attr('data-val'),
+                    selected = li.hasClass('dw-msel');
+
+                if (selected) {
+                    li.removeClass('dw-msel').removeAttr('aria-selected');
+                    delete inst._selectedValues[val];
+                } else {
+                    li.addClass('dw-msel').attr('aria-selected', 'true');
+                    inst._selectedValues[val] = val;
+                }
+
+                if (s.display == 'inline') {
+                    setVal(val, true);
+                }
+                return false;
             }
         }
 
@@ -120,9 +150,9 @@
             grIdx = -1;
             optIdx = 0;
         }
-        
+
         $('#' + id).remove();
-        
+
         input = $('<input type="text" id="' + id + '" class="' + s.inputClass + '" readonly />').insertBefore(elm),
 
         $('option', elm).each(function () {
@@ -134,26 +164,42 @@
                 inst.show();
             });
         }
-        
+
+        if (s.showOnTap) {
+            inst.tap(input, function () {
+                inst.show();
+            });
+        }
+
         var v = elm.val() || [],
             i = 0;
-        
+
         for (i; i < v.length; i++) {
             inst._selectedValues[v[i]] = v[i];
         }
-        
+
         setVal(main[option]);
 
-        elm.unbind('.dwsel').bind('change.dwsel', function () {
+        elm.off('.dwsel').on('change.dwsel', function () {
             if (!prevent) {
-                inst.setSelectVal(multiple ? elm.val() || [] : [elm.val()], true);
+                inst.setValue(multiple ? elm.val() || [] : [elm.val()], true);
             }
             prevent = false;
         }).hide().closest('.ui-field-contain').trigger('create');
 
-        inst.setSelectVal = function (d, fill, time) {
-            option = d[0] || $('option', elm).attr('value');
-            
+        // Extended methods
+        // ---
+
+        if (!inst._setValue) {
+            inst._setValue = inst.setValue;
+        }
+
+        inst.setValue = function (d, fill, time, noscroll, temp) {
+            var value,
+                v = $.isArray(d) ? d[0] : d;
+
+            option = v !== undefined ? v : $('option', elm).attr('value');
+
             if (multiple) {
                 inst._selectedValues = {};
                 var i = 0;
@@ -165,17 +211,17 @@
             if (s.group) {
                 group = elm.find('option[value="' + option + '"]').parent();
                 gr = group.index();
-                inst.temp = s.rtl ? ['_' + option, '_' + group.index()] : ['_' + group.index(), '_' + option];
+                value = s.rtl ? [option, group.index()] : [group.index(), option];
                 if (gr !== prev) { // Need to regenerate wheels, if group changed
-                    stg.wheels = genWheels();
+                    s.wheels = genWheels();
                     inst.changeWheel([optIdx]);
                     prev = gr + '';
                 }
             } else {
-                inst.temp = ['_' + option];
+                value = [option];
             }
 
-            inst.setValue(true, fill, time);
+            inst._setValue(value, fill, time, noscroll, temp);
 
             // Set input/select values
             if (fill) {
@@ -184,10 +230,12 @@
             }
         };
 
-        inst.getSelectVal = function (temp) {
+        inst.getValue = function (temp) {
             var val = temp ? inst.temp : inst.values;
-            return replace(val[optIdx]);
+            return val[optIdx];
         };
+
+        // ---
 
         return {
             width: 50,
@@ -196,7 +244,7 @@
             multiple: multiple,
             anchor: input,
             formatResult: function (d) {
-                return main[replace(d[optIdx])];
+                return main[d[optIdx]];
             },
             parseValue: function () {
                 var v = elm.val() || [],
@@ -208,68 +256,77 @@
                         inst._selectedValues[v[i]] = v[i];
                     }
                 }
-                
+
                 option = multiple ? (elm.val() ? elm.val()[0] : $('option', elm).attr('value')) : elm.val();
-                
+
                 group = elm.find('option[value="' + option + '"]').parent();
                 gr = group.index();
                 prev = gr + '';
-                return s.group && s.rtl ? ['_' + option, '_' + gr] : s.group ? ['_' + gr, '_' + option] : ['_' + option];
+                return s.group && s.rtl ? [option, gr] : s.group ? [gr, option] : [option];
             },
             validate: function (dw, i, time) {
                 if (i === undefined && multiple) {
                     var v = inst._selectedValues,
                         j = 0;
 
+                    $('.dwwl' + optIdx + ' .dw-li', dw).removeClass('dw-msel').removeAttr('aria-selected');
+
                     for (j in v) {
-                        $('.dwwl' + optIdx + ' .dw-li[data-val="_' + v[j] + '"]', dw).addClass('dw-msel');
+                        $('.dwwl' + optIdx + ' .dw-li[data-val="' + v[j] + '"]', dw).addClass('dw-msel').attr('aria-selected', 'true');
                     }
                 }
-                
+
                 if (i === grIdx) {
-                    gr = replace(inst.temp[grIdx]);
+                    gr = inst.temp[grIdx];
                     if (gr !== prev) {
                         group = elm.find('optgroup').eq(gr);
                         gr = group.index();
                         option = group.find('option').eq(0).val();
                         option = option || elm.val();
-                        stg.wheels = genWheels();
+                        s.wheels = genWheels();
                         if (s.group) {
-                            inst.temp = s.rtl ? ['_' + option, '_' + gr] : ['_' + gr, '_' + option];
-                            stg.readonly = [s.rtl, !s.rtl];
+                            inst.temp = s.rtl ? [option, gr] : [gr, option];
+                            s.readonly = [s.rtl, !s.rtl];
                             clearTimeout(timer);
                             timer = setTimeout(function () {
                                 inst.changeWheel([optIdx]);
-                                stg.readonly = roPre;
+                                s.readonly = roPre;
                                 prev = gr + '';
                             }, time * 1000);
                             return false;
                         }
                     } else {
-                        stg.readonly = roPre;
+                        s.readonly = roPre;
                     }
                 } else {
-                    option = replace(inst.temp[optIdx]);
+                    option = inst.temp[optIdx];
                 }
 
                 var t = $('.dw-ul', dw).eq(optIdx);
                 $.each(s.invalid, function (i, v) {
-                    $('.dw-li[data-val="_' + v + '"]', t).removeClass('dw-v');
+                    $('.dw-li[data-val="' + v + '"]', t).removeClass('dw-v');
                 });
             },
             onBeforeShow: function (dw) {
-                stg.wheels = genWheels();
+                s.wheels = genWheels();
                 if (s.group) {
-                    inst.temp = s.rtl ? ['_' + option, '_' + group.index()] : ['_' + group.index(), '_' + option];
+                    inst.temp = s.rtl ? [option, group.index()] : [group.index(), option];
                 }
             },
             onMarkupReady: function (dw) {
-                $('.dwwl' + grIdx, dw).bind('mousedown touchstart', function () {
+                $('.dwwl' + grIdx, dw).on('mousedown touchstart', function () {
                     clearTimeout(timer);
                 });
                 if (multiple) {
                     dw.addClass('dwms');
-                    $('.dwwl', dw).eq(optIdx).addClass('dwwms');
+                    $('.dwwl', dw).eq(optIdx).addClass('dwwms').attr('aria-multiselectable', 'true');
+                    $('.dwwl', dw).on('keydown', function (e) {
+                        if (e.keyCode == 32) { // Space
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onTap($('.dw-sel', this));
+                        }
+                    });
                     origValues = {};
                     var i;
                     for (i in inst._selectedValues) {
@@ -277,22 +334,7 @@
                     }
                 }
             },
-            onValueTap: function (li) {
-                if (multiple && li.hasClass('dw-v') && li.closest('.dw').find('.dw-ul').index(li.closest('.dw-ul')) == optIdx) {
-                    var val = replace(li.attr('data-val'));
-                    if (li.hasClass('dw-msel')) {
-                        delete inst._selectedValues[val];
-                    } else {
-                        inst._selectedValues[val] = val;
-                    }
-                    li.toggleClass('dw-msel');
-                    
-                    if (s.display == 'inline') {
-                        setVal(val, true);
-                    }
-                    return false;
-                }
-            },
+            onValueTap: onTap,
             onSelect: function (v) {
                 setVal(v, true);
                 if (s.group) {
@@ -315,32 +357,11 @@
                 if (s.display == 'inline' && !multiple) {
                     input.val(v);
                     prevent = true;
-                    elm.val(replace(inst.temp[optIdx])).trigger('change');
+                    elm.val(inst.temp[optIdx]).trigger('change');
                 }
             },
             onClose: function () {
                 input.blur();
-            },
-            methods: {
-                setValue: function (d, fill, time) {
-                    return this.each(function () {
-                        var inst = $(this).mobiscroll('getInst');
-                        if (inst) {
-                            if (inst.setSelectVal) {
-                                inst.setSelectVal(d, fill, time);
-                            } else {
-                                inst.temp = d;
-                                inst.setValue(true, fill, time);
-                            }
-                        }
-                    });
-                },
-                getValue: function (temp) {
-                    var inst = $(this).mobiscroll('getInst');
-                    if (inst) {
-                        return inst.getSelectVal ? inst.getSelectVal(temp) : inst.values;
-                    }
-                }
             }
         };
     };

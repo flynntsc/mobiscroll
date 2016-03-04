@@ -1,27 +1,28 @@
 .dw-trans .dw-persp {
     overflow: hidden;
-    perspective: 1000;
-    -webkit-perspective: 1000;
-    -moz-perspective: 1000;
+    perspective: 1000px;
+    -webkit-perspective: 1000px;
+    -moz-perspective: 1000px;
 }
-.dw-trans .dwwb {
+.dw-trans .dwwb,
+.dw-trans .dwwo {
     -webkit-backface-visibility: hidden;
+}
+.dw-in,
+.dw-out {
+     animation-duration: 350ms;
+     -webkit-animation-duration: 350ms;
+     -moz-animation-duration: 350ms;
 }
 .dw-in {
     animation-timing-function: ease-out;
-    animation-duration: 350ms;
     -webkit-animation-timing-function: ease-out;
-    -webkit-animation-duration: 350ms;
     -moz-animation-timing-function: ease-out;
-    -moz-animation-duration: 350ms;
 }
 .dw-out {
     animation-timing-function: ease-in;
-    animation-duration: 350ms;
     -webkit-animation-timing-function: ease-in;
-    -webkit-animation-duration: 350ms;
     -moz-animation-timing-function: ease-in;
-    -moz-animation-duration: 350ms;
 }
 .dw-flip,
 .dw-swing,
@@ -139,7 +140,9 @@
 .dw-slidedown.dw-out {
     animation-name: dw-sd-out;
     -webkit-animation-name: dw-sd-out;
+    -webkit-transform: translateY(-100%);
     -moz-animation-name: dw-sd-out;
+    -moz-transform: translateY(-100%);
 }
 .dw-slideup.dw-in {
     transform: scale(1);
@@ -152,7 +155,9 @@
 .dw-slideup.dw-out {
     animation-name: dw-su-out;
     -webkit-animation-name: dw-su-out;
+    -webkit-transform: translateY(100%);
     -moz-animation-name: dw-su-out;
+    -moz-transform: translateY(100%);
 }
 .dw-fade.dw-in {
     opacity: 1;
