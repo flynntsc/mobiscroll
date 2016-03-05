@@ -29,10 +29,10 @@ Options:
 
 ```
 {
-	preset: 'date', //日期类型 【datatime】【time】...
-	theme: 'ios', //皮肤【android-ics light】【android-ics】【ios】【jqm】
+	preset: 'date', // datetime,time,tree_list,image_text,select
+	theme: 'ios', //皮肤【android-ics light】【android-ics】【ios】【jqm】...
 	mode: "scroller",//操作方式【scroller】【clickpick】【mixed】
-	lang: 'zh',
+	lang: 'zh', // hu,de,es,fr,it,no,pt-BR,nl,tr,ja
 	display: 'modal', //显示方【modal】【inline】【bubble】【top】【bottom】
 	dateFormat: 'yyyy-mm-dd',
 	setText: '确定',
